@@ -20,8 +20,10 @@ def plotRelevance(y,relevance):
 def callUtilityFunctions(data,method,extrType, controlPts, coef):
     if(method=="extremes"):
         controlPts, npts = phiControl(data,method,extrType, controlPts, coef)
+        yPhi, ydPhi, yddPhi = phi(data, controlPts, npts, 'extremes')
     else:
         controlPts, npts = phiControl(data,method,extrType, controlPts, coef)
+        yPhi, ydPhi, yddPhi = phi(data, controlPts, npts, 'range')
     print("------------------------------------------")
     print("Control Points", controlPts)
     print("npts:", npts)
@@ -32,8 +34,10 @@ def callUtilityFunctions(data,method,extrType, controlPts, coef):
         print("------------------------------------------")
         return [] , [] , []
 
-    yPhi, ydPhi, yddPhi = phi(data, controlPts, npts, 'extremes')
+    
     return yPhi, ydPhi, yddPhi
+
+
 
 
 if __name__ == '__main__':
