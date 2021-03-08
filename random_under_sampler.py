@@ -126,7 +126,7 @@ class RandomUnderSamplerRegression:
 
     def process_balance(self, bumps_undersampling, interesting_set):
         resample_size = round(len(interesting_set) / len(bumps_undersampling))
-        print('Resample size for balance is '+str(resample_size))
+        #print('process_balance(): resample_size per bump='+str(resample_size))
         resampled_sets = []
         for s in bumps_undersampling:
             resampled_sets.append(s.sample(n=resample_size))
@@ -137,20 +137,20 @@ class RandomUnderSamplerRegression:
 
     def process_extreme(self, bumps_undersampling, bumps_interesting, interesting_set):
         
-        print('process_extreme(): size of bumps_undersampling='+str(len(bumps_undersampling)))
-        print('process_extreme(): size of bumps_interesting='+str(len(bumps_interesting)))
-        print('process_extreme(): size of interesting_set='+str(len(interesting_set)))
+        #print('process_extreme(): size of bumps_undersampling='+str(len(bumps_undersampling)))
+        #print('process_extreme(): size of bumps_interesting='+str(len(bumps_interesting)))
+        #print('process_extreme(): size of interesting_set='+str(len(interesting_set)))
         resampled_sets = []
         #calculate average cnt
         len_interesting_set = len(interesting_set)
         len_total = len(self.data)
-        print('process_extreme(): size of total_set='+str(len_total))
+        #print('process_extreme(): size of total_set='+str(len_total))
         average_cnt_interesting_set = len_interesting_set/len(bumps_interesting)
-        print('process_extreme(): average_cnt_interesting_set='+str(average_cnt_interesting_set))
+        #print('process_extreme(): average_cnt_interesting_set='+str(average_cnt_interesting_set))
         resample_size = (average_cnt_interesting_set**2.0)/(len_total-len_interesting_set)
-        print('process_extreme(): resample_size='+str(average_cnt_interesting_set))
+        #print('process_extreme(): resample_size='+str(resample_size))
         resample_size_per_bump = round(resample_size / len(bumps_undersampling))
-        print('process_extreme(): resample_size_per_bump='+str(resample_size_per_bump))
+        #print('process_extreme(): resample_size_per_bump='+str(resample_size_per_bump))
 
         for s in bumps_undersampling:
             resampled_sets.append(s.sample(n = resample_size_per_bump))
@@ -172,23 +172,23 @@ class RandomUnderSamplerRegression:
             return []
         elif len(self.c_perc) == 1: 
             undersample_perc = self.c_perc[0]
-            print('len(self.c_perc) == 1')
-            print('process_percentage(): undersample_perc='+str(undersample_perc))
+            #print('len(self.c_perc) == 1')
+            #print('process_percentage(): undersample_perc='+str(undersample_perc))
             for s in bumps_undersampling:
-                print('process_percentage(): bump size='+str(len(s)))
+                #print('process_percentage(): bump size='+str(len(s)))
                 resample_size = round(len(s)*undersample_perc)
-                print('process_percentage(): resample_size='+str(resample_size))
+                #print('process_percentage(): resample_size='+str(resample_size))
                 resampled_sets.append(s.sample(n = resample_size))
             #adding interesting set
             resampled_sets.append(interesting_set)
             result = pd.concat(resampled_sets)
         else:
             for i in range(len(bumps_undersampling)):
-                print('len(self.c_perc) > 1 loop i='+str(i))
+                #print('len(self.c_perc) > 1 loop i='+str(i))
                 undersample_perc = self.c_perc[i]
-                print('process_percentage(): undersample_perc='+str(undersample_perc))
+                #print('process_percentage(): undersample_perc='+str(undersample_perc))
                 resample_size = round(len(bumps_undersampling[i])*undersample_perc)
-                print('process_percentage(): resample_size='+str(resample_size))
+                #print('process_percentage(): resample_size='+str(resample_size))
                 resampled_sets.append(bumps_undersampling[i].sample(n = resample_size))
             #adding interesting set
             resampled_sets.append(interesting_set)
@@ -206,21 +206,17 @@ class RandomUnderSamplerRegression:
 
         for idx, row in df.iterrows():
             if less_than_thr_rel and (row['yPhi'] < thr_rel):
-                #bumps_undersampling_df.loc[len(bumps_undersampling_df)] = row
                 bumps_undersampling_df = bumps_undersampling_df.append(row)
             elif less_than_thr_rel and row['yPhi'] >= thr_rel:
                 bumps_undersampling.append(bumps_undersampling_df)
                 bumps_undersampling_df = pd.DataFrame(columns = df.columns)
-                #bumps_interesting_df.loc[len(bumps_interesting_df)] = row
                 bumps_interesting_df = bumps_interesting_df.append(row)
                 less_than_thr_rel = False
             elif (not less_than_thr_rel) and (row['yPhi'] >= thr_rel):
-                #bumps_interesting_df.loc[len(bumps_interesting_df)] = row
                 bumps_interesting_df = bumps_interesting_df.append(row)
             elif (not less_than_thr_rel) and (row['yPhi'] < thr_rel):
                 bumps_interesting.append(bumps_interesting_df)
                 bumps_interesting_df = pd.DataFrame(columns = df.columns)
-                #bumps_undersampling_df.loc[len(bumps_undersampling_df)] = row
                 bumps_undersampling_df = bumps_undersampling_df.append(row)
                 less_than_thr_rel = True
 
