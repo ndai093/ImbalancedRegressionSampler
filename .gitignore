@@ -2,4 +2,4 @@
 *.pyc
 /test/
 .vscode/
-*.ipynb
+.ipynb_checkpoints/
