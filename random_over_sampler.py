@@ -15,10 +15,11 @@ class RandomOverSamplerRegression:
         controlPts - list of control points formatted as [y1, phi(y1), phi'(y1), y2, phi(y2), phi'(y2)], where
                      y1: target value; phi(y1): relevane value of y1; phi'(y1): derivative of phi(y1), etc.
         c_perc - oversampling strategy should be applied in each bump with interesting sets, 
-                 string type as defined below,
-                 "balance" - will try to distribute the examples evently across the existing bumps 
+                 possible types are defined below,
+                 "balance" - will try to distribute the examples evenly across the existing bumps 
                  "extreme" - invert existing frequency of interesting/uninteresting set
-                 "<percentage>" - percentage oversampling interesting bumps should follow.
+                 <percentage> - A list of percentage values with either one value apply to all bumps of oversampling set
+                                or multiple percentage values mapping to each bump of oversampling set
     """
     def __init__(self, data, method='auto', extrType='both', thr_rel=1.0, controlPts=[], c_perc="balance"):
         
