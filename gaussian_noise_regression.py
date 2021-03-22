@@ -112,6 +112,8 @@ class GaussianNoiseRegression:
             resampled = self.process_percentage()
         elif self.c_perc == 'balance':
             resampled = self.process_balance()
+        elif self.c_perc == 'extreme':
+            resampled = self.process_extreme()
 
         #clean up resampled set and return
         self.postprocess_data(resampled)
@@ -268,9 +270,10 @@ class GaussianNoiseRegression:
 
     def process_balance(self):
         new_samples_per_bump = round(len(self.uninteresting_set) / len(self.bumps_oversampling))
-        print('process_balance(): resample_size per bump={resample_size}')
+        print(f'process_balance(): resample_size per bump={resample_size}')
         resampled_sets = []
         resampled_sets.append(self.get_uninteresting_set())
+        resampled_sets.append(self.get_interesting_set())
         resampled_oversampling_set = []
         for s in self.bumps_oversampling:
             ratio = new_samples_per_bump / len(s)
@@ -278,7 +281,7 @@ class GaussianNoiseRegression:
                 size_new_samples_set = round(len(s)*(ratio-1))
                 resampled_oversampling_set.append(s.sample(n = size_new_samples_set))
             elif ratio>2:
-                c_perc_int, c_perc_frac = math.modf(self.ratio)
+                c_perc_int, c_perc_frac = math.modf(ratio)
                 size_frac_new_samples_set = round(len(s)*c_perc_frac)
                 resampled_oversampling_set.append(s.sample(n=size_frac_new_samples_set))
                 ss = s.loc[s.index.repeat(c_perc_int-1)]
@@ -293,3 +296,6 @@ class GaussianNoiseRegression:
         resampled_sets.append(new_samples_set_gn)
         result = pd.concat(resampled_sets)
         return result
+
+    def process_extreme(self):
+        pass
