@@ -24,9 +24,9 @@ class GaussianNoiseRegression:
                                 or multiple percentage values mapping to each bump of undersampling set;
                                 for any percentage value > 1, there should be either 1 percentage value applies to all bumps of oversampling set
                                 or multiple percentage values mapping to each bump of oversampling set;
-        pert - percentage of standard deviation when applying Gaussian Noise        
+        pert - percentage of standard deviation when applying Gaussian Noise, default value is 0.1      
     """
-    def __init__(self, data, method='auto', extrType='both', thr_rel=1.0, controlPts=[], c_perc="balance", pert=1.0):
+    def __init__(self, data, method='auto', extrType='both', thr_rel=1.0, controlPts=[], c_perc="balance", pert=0.1):
         
         self.data = data;
         
@@ -60,16 +60,14 @@ class GaussianNoiseRegression:
 
     def processCPerc(self, c_perc):
         for x in c_perc:
-            if x < 1:
-                self.c_perc_undersampling.append(x)
-            elif x > 1:
-                self.c_perc_oversampling.append(x)
+            if x < 1.0:
+                self.c_perc_undersampling.append(float(x))
+            elif x > 1.0:
+                self.c_perc_oversampling.append(float(x))
             else:
-                print('c_perc valie in list should not be 1!')
-        print('c_perc_undersampling:')
-        print(self.c_perc_undersampling)    
-        print('c_perc_oversampling')
-        print(self.c_perc_oversampling)
+                print('c_perc value in list should not be 1!')
+        print(f'c_perc_undersampling: {self.c_perc_undersampling}')
+        print(f'c_perc_oversampling: {self.c_perc_oversampling}')
 
     def getMethod(self):
         return self.method
@@ -90,23 +88,48 @@ class GaussianNoiseRegression:
         if self.c_perc in ['balance', 'extreme']:
             return self.c_perc
         else:
-            return self.c_perc_oversampling, self.c_perc_oversampling
+            return self.c_perc_undersampling, self.c_perc_oversampling
 
     def getPert(self):
         return self.pert
+
+    def set_feature_stds_list(self, data):
+        self.feature_stds_list = data.std().to_list()
+
+    def get_feature_stds_list(self):
+        return self.feature_stds_list
+
+    def set_obj_interesting_set(self, data):
+        self.interesting_set = self.get_interesting_set(data)
+
+    def get_obj_interesting_set(self):
+        return self.interesting_set
+
+    def set_obj_uninteresting_set(self, data):
+        self.uninteresting_set = self.get_uninteresting_set(data)
+
+    def get_obj_uninteresting_set(self):
+        return self.uninteresting_set
+
+    def set_obj_bumps(self, data):
+        self.bumps_undersampling, self.bumps_oversampling = self.calc_bumps(data)
+
+    def get_obj_bumps(self):
+        return self.bumps_undersampling, self.bumps_oversampling
 
     def resample(self):
 
         yPhi, ydPhi, yddPhi = self.calc_rel_values()
 
         data1 = self.preprocess_data(yPhi)
-        self.feature_stds_list = data1.std().to_list()
+        #standard deviation list
+        self.set_feature_stds_list(data1)
         #interesting set
-        self.interesting_set = self.get_interesting_set(data1)
+        self.set_obj_interesting_set(data1)
         #uninteresting set
-        self.uninteresting_set = self.get_uninteresting_set(data1)
+        self.set_obj_uninteresting_set(data1)
         #calculate bumps
-        self.bumps_undersampling, self.bumps_oversampling = self.calc_bumps(data1)
+        self.set_obj_bumps(data1)
 
         if self.c_perc == 'percentage list':
             resampled = self.process_percentage()
@@ -188,8 +211,10 @@ class GaussianNoiseRegression:
     def process_percentage(self):
 
         #process undersampling
-        len_c_perc_undersampling = len(self)
+        len_c_perc_undersampling = len(self.c_perc_undersampling)
+        print(f'len_c_perc_undersampling={len_c_perc_undersampling}')
         len_bumps_undersampling = len(self.bumps_undersampling)
+        print(f'len_bumps_undersampling={len_bumps_undersampling}')
         resampled_sets = []
 
         if len_c_perc_undersampling == 0:
@@ -221,20 +246,26 @@ class GaussianNoiseRegression:
 
         #process oversampling with Gaussian noise
         len_c_perc_oversampling = len(self.c_perc_oversampling)
+        print(f'len_c_perc_oversampling={len_c_perc_oversampling}')
         len_bumps_oversampling = len(self.bumps_oversampling)
+        print(f'len_bumps_oversampling={len_bumps_oversampling}')
         resampled_oversampling_set = []
         if len(self.c_perc_oversampling) == 1:
             #oversampling - new samples set
             for s in self.bumps_oversampling:
                 # size of the new samples
-                if self.c_perc_oversampling[0]>1 and self.c_perc_oversampling[0]<2:
+                print(f'c_perc_oversampling[0]={self.c_perc_oversampling[0]}')
+                if self.c_perc_oversampling[0]>1.0 and self.c_perc_oversampling[0]<2.0:
                     size_new_samples_set = round(len(s)*(self.c_perc_oversampling[0]-1))
+                    print(f'size_new_samples_set={size_new_samples_set}')
                     resampled_oversampling_set.append(s.sample(n = size_new_samples_set))
-                elif self.c_perc_oversampling[0]>2:
-                    c_perc_int, c_perc_frac = math.modf(self.c_perc_oversampling[0])
-                    size_frac_new_samples_set = round(len(s)*c_perc_frac)
-                    resampled_oversampling_set.append(s.sample(n=size_frac_new_samples_set))
-                    ss = s.loc[s.index.repeat(c_perc_int-1)]
+                elif self.c_perc_oversampling[0]>2.0:
+                    c_perc_frac, c_perc_int = math.modf(self.c_perc_oversampling[0])
+                    print(f'c_perc_int, c_perc_frac =={c_perc_int, c_perc_frac}')
+                    if c_perc_frac > 0.0:
+                        size_frac_new_samples_set = round(len(s)*c_perc_frac)
+                        resampled_oversampling_set.append(s.sample(n=size_frac_new_samples_set))
+                    ss = s.loc[s.index.repeat(int(c_perc_int)-1)]
                     resampled_oversampling_set.append(ss)        
         
         elif len_c_perc_oversampling == len_bumps_oversampling:
@@ -243,14 +274,17 @@ class GaussianNoiseRegression:
                 c_perc_bump = self.c_perc_oversampling[i]
                 print(f'process_percentage(): undersample_perc={c_perc_bump}')
 
-                if c_perc_bump>1 and c_perc_bump<2:
+                if c_perc_bump>1.0 and c_perc_bump<2.0:
                     size_new_samples_set = round(len(s)*(c_perc_bump-1))
+                    print(f'size_new_samples_set={size_new_samples_set}')
                     resampled_oversampling_set.append(s.sample(n = size_new_samples_set))
-                elif c_perc_bump>2:
-                    c_perc_int, c_perc_frac = math.modf(self.c_perc_oversampling[0])
-                    size_frac_new_samples_set = round(len(self.bumps_oversampling[i])*c_perc_frac)
-                    resampled_oversampling_set.append(self.bumps_oversampling[i].sample(n=size_frac_new_samples_set))
-                    ss = self.bumps_oversampling[i].loc[self.bumps_oversampling[i].index.repeat(c_perc_int-1)]
+                elif c_perc_bump>2.0:
+                    c_perc_frac, c_perc_int = math.modf(self.c_perc_oversampling[0])
+                    print(f'c_perc_int, c_perc_frac =={c_perc_int, c_perc_frac}')
+                    if c_perc_frac>0.0:
+                        size_frac_new_samples_set = round(len(self.bumps_oversampling[i])*c_perc_frac)
+                        resampled_oversampling_set.append(self.bumps_oversampling[i].sample(n=size_frac_new_samples_set))
+                    ss = self.bumps_oversampling[i].loc[self.bumps_oversampling[i].index.repeat(int(c_perc_int)-1)]
                     resampled_oversampling_set.append(ss)        
 
         else:
@@ -261,7 +295,7 @@ class GaussianNoiseRegression:
         new_samples_set_gn.shape
         #applying Gaussian Noise
         for idx in range(new_samples_set_gn.shape[1]):
-            new_samples_set_gn.iloc[:,index] = new_samples_set_gn.iloc[:,index].apply(lambda x: x+np.random.normal(0,self.feature_stds_list[index]*self.pert,1)[0])
+            new_samples_set_gn.iloc[:,idx] = new_samples_set_gn.iloc[:,idx].apply(lambda x: x+np.random.normal(0,self.feature_stds_list[idx]*self.pert,1)[0])
 
         #appending to resampled_sets
         resampled_sets.append(new_samples_set_gn)
@@ -270,27 +304,31 @@ class GaussianNoiseRegression:
 
     def process_balance(self):
         new_samples_per_bump = round(len(self.uninteresting_set) / len(self.bumps_oversampling))
-        print(f'process_balance(): resample_size per bump={resample_size}')
+        print(f'process_balance(): resample_size per bump={new_samples_per_bump}')
         resampled_sets = []
         resampled_sets.append(self.uninteresting_set)
         resampled_sets.append(self.interesting_set)
         resampled_oversampling_set = []
         for s in self.bumps_oversampling:
             ratio = new_samples_per_bump / len(s)
-            if ratio>1 and ratio<2:
+            print(f'ratio={ratio}')
+            if ratio>1.0 and ratio<2.0:
                 size_new_samples_set = round(len(s)*(ratio-1))
+                print(f'size_new_samples_set={size_new_samples_set}')
                 resampled_oversampling_set.append(s.sample(n = size_new_samples_set))
-            elif ratio>2:
-                c_perc_int, c_perc_frac = math.modf(ratio)
-                size_frac_new_samples_set = round(len(s)*c_perc_frac)
-                resampled_oversampling_set.append(s.sample(n=size_frac_new_samples_set))
-                ss = s.loc[s.index.repeat(c_perc_int-1)]
+            elif ratio>2.0:
+                c_perc_frac, c_perc_int = math.modf(ratio)
+                print(f'c_perc_int, c_perc_frac =={c_perc_int, c_perc_frac}')
+                if c_perc_frac > 0.0:
+                    size_frac_new_samples_set = round(len(s)*c_perc_frac)
+                    resampled_oversampling_set.append(s.sample(n=size_frac_new_samples_set))
+                ss = s.loc[s.index.repeat(int(c_perc_int)-1)]
                 resampled_oversampling_set.append(ss)        
         #combining new samples
         new_samples_set_gn = pd.concat(resampled_oversampling_set)
         #applying Gaussian Noise
         for idx in range(new_samples_set_gn.shape[1]):
-            new_samples_set_gn.iloc[:,index] = new_samples_set_gn.iloc[:,index].apply(lambda x: x+np.random.normal(0,self.feature_stds_list[index]*self.pert,1)[0])
+            new_samples_set_gn.iloc[:,idx] = new_samples_set_gn.iloc[:,idx].apply(lambda x: x+np.random.normal(0,self.feature_stds_list[idx]*self.pert,1)[0])
 
         #appending to resampled_sets
         resampled_sets.append(new_samples_set_gn)
@@ -306,6 +344,7 @@ class GaussianNoiseRegression:
         resampled_sets.append(self.interesting_set)
         #calculate average cnt
         len_uninteresting_set = len(self.uninteresting_set)
+        print(f'process_extreme(): len_uninteresting_set={len_uninteresting_set}')
         len_total = len(self.data)
         print(f'process_extreme(): size of total_set={len_total}')
         average_cnt_uninteresting_set = len_uninteresting_set/len(self.bumps_undersampling)
@@ -318,21 +357,25 @@ class GaussianNoiseRegression:
         resampled_oversampling_set = []
         for s in self.bumps_oversampling:
             ratio = resample_size_per_bump / len(s)
-            if ratio>1 and ratio<2:
+            if ratio>1.0 and ratio<2.0:
                 size_new_samples_set = round(len(s)*(ratio-1))
+                print(f'process_extreme(): size_new_samples_set={size_new_samples_set}')
                 resampled_oversampling_set.append(s.sample(n = size_new_samples_set))
-            elif ratio>2:
-                c_perc_int, c_perc_frac = math.modf(ratio)
-                size_frac_new_samples_set = round(len(s)*c_perc_frac)
-                resampled_oversampling_set.append(s.sample(n=size_frac_new_samples_set))
-                ss = s.loc[s.index.repeat(c_perc_int-1)]
+            elif ratio>2.0:
+                c_perc_frac, c_perc_int = math.modf(ratio)
+                print(f'process_extreme(): c_perc_int, c_perc_frac =={c_perc_int, c_perc_frac}')
+                if c_perc_frac > 0.0:
+                    size_frac_new_samples_set = round(len(s)*c_perc_frac)
+                    print(f'process_extreme(): size_frac_new_samples_set={size_frac_new_samples_set}')
+                    resampled_oversampling_set.append(s.sample(n=size_frac_new_samples_set))
+                ss = s.loc[s.index.repeat(int(c_perc_int)-1)]
                 resampled_oversampling_set.append(ss)        
 
         #combining new samples
         new_samples_set_gn = pd.concat(resampled_oversampling_set)
         #applying Gaussian Noise
         for idx in range(new_samples_set_gn.shape[1]):
-            new_samples_set_gn.iloc[:,index] = new_samples_set_gn.iloc[:,index].apply(lambda x: x+np.random.normal(0,self.feature_stds_list[index]*self.pert,1)[0])
+            new_samples_set_gn.iloc[:,idx] = new_samples_set_gn.iloc[:,idx].apply(lambda x: x+np.random.normal(0,self.feature_stds_list[idx]*self.pert,1)[0])
 
         #appending to resampled_sets
         resampled_sets.append(new_samples_set_gn)
