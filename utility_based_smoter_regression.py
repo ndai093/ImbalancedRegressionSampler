@@ -4,6 +4,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import math
+from random import seed
+from random import randint
+from random import random
 
 class SmoteRRegression:
     """
@@ -28,6 +31,7 @@ class SmoteRRegression:
     """
     def __init__(self, data, method='auto', extrType='both', thr_rel=1.0, controlPts=[], c_perc="balance", k=5):
         
+        seed(1)
         self.data = data;
         
         self.method = 'extremes' if method in ['extremes', 'auto'] else 'range'
@@ -130,8 +134,6 @@ class SmoteRRegression:
         elif self.c_perc == 'extreme':
             resampled = self.process_extreme()
 
-        #clean up resampled set and return
-        self.postprocess_data(resampled)
         return resampled
 
     def postprocess_data(self, resampled):
@@ -199,6 +201,48 @@ class SmoteRRegression:
             bumps_oversampling.append(bumps_oversampling_df)
 
         return bumps_undersampling, bumps_oversampling        
+
+    def process_percentage(self):
+        undersampling_and_interesting, new_samples_set = self.process_percentage_new_base_samples()
+        reduced_cols = new_samples_set.columns.values.tolist()[:-1]
+        dups_sample_counts = new_samples_set.pivot_table(index=reduced_cols, aggfunc='size')
+        interesting_set_list = self.interesting_set.iloc[:,:-1].values.tolist()
+
+        #new samples from smote
+        new_samples_smote = []
+        for index, value in dups_sample_counts.items():
+            base_sample = list(index)
+            #print(f'base_sample={base_sample}')
+            kNN_result = self.kNN_calc(self.k, base_sample, interesting_set_list)
+            #Generating new samples
+            for x in range(value):
+                idx = randint(0, 4)
+                #print(f'x={x},idx={idx}')
+                nb = kNN_result[idx]
+                #Generate attribute values
+                new_sample = []
+                for y in range(len(base_sample)-1):
+                    diff = abs(base_sample[y]-nb[y])
+                    new_sample.append(base_sample[y]+random()*diff)
+                #Calc target value
+                a = np.array(new_sample)
+                b = np.array(base_sample[:-1])
+                d1 = np.linalg.norm(a-b)
+                c = np.array(nb[:-1])
+                d2 = np.linalg.norm(a-c)
+                new_target = (d2*base_sample[-1]+d1*nb[-1])/(d1+d2)
+                new_sample.append(new_target)
+                #print(f'new_sample={new_sample}')
+                new_samples_smote.append(new_sample)
+        print(f'len={len(new_samples_smote)}')
+        print(f'{new_samples_smote}')
+        #Generate final result
+        undersampling_and_interesting.drop('yPhi',axis=1,inplace=True )
+        df_new_samples_smote = pd.DataFrame(new_samples_smote)
+        df_new_samples_smote.columns = reduced_cols
+        frames = [undersampling_and_interesting, df_new_samples_smote]
+        result = pd.concat(frames)
+        return result
 
     def process_percentage_new_base_samples(self):
 
@@ -290,5 +334,13 @@ class SmoteRRegression:
         
         return undersampling_and_interesting, new_samples_set
 
-    def smoter_calc(self, new_samples_set, interesting_set):
-        pass
+    def kNN_calc(self, k, sample_as_list, interesting_set_list):
+        a = np.array(sample_as_list[:-1])
+        for sample_interesting in interesting_set_list:
+            b = np.array(sample_interesting[:-1])
+            dist = np.linalg.norm(a-b)
+            sample_interesting.append(dist)
+        kNN_result = sorted(interesting_set_list, key=lambda x:x[-1])[1:(k+1)]
+        for j in interesting_set_list:
+            del j[-1]
+        return kNN_result
