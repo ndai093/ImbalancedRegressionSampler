@@ -136,11 +136,6 @@ class SmoteRRegression:
 
         return resampled
 
-    def postprocess_data(self, resampled):
-        resampled.drop('yPhi',axis=1,inplace=True )
-        resampled.sort_index(inplace=True)
-        return resampled
-
     def preprocess_data(self, yPhi):
         #append column 'yPhi'
         data1 = self.data
@@ -203,7 +198,7 @@ class SmoteRRegression:
         return bumps_undersampling, bumps_oversampling        
 
     def process_percentage(self):
-        undersampling_and_interesting, new_samples_set = self.process_percentage_new_base_samples()
+        undersampling_and_interesting, new_samples_set = self.preprocess_percentage()
         reduced_cols = new_samples_set.columns.values.tolist()[:-1]
         dups_sample_counts = new_samples_set.pivot_table(index=reduced_cols, aggfunc='size')
         interesting_set_list = self.interesting_set.iloc[:,:-1].values.tolist()
@@ -235,7 +230,7 @@ class SmoteRRegression:
                 #print(f'new_sample={new_sample}')
                 new_samples_smote.append(new_sample)
         print(f'len={len(new_samples_smote)}')
-        print(f'{new_samples_smote}')
+        #print(f'{new_samples_smote}')
         #Generate final result
         undersampling_and_interesting.drop('yPhi',axis=1,inplace=True )
         df_new_samples_smote = pd.DataFrame(new_samples_smote)
@@ -244,7 +239,7 @@ class SmoteRRegression:
         result = pd.concat(frames)
         return result
 
-    def process_percentage_new_base_samples(self):
+    def preprocess_percentage(self):
 
         #process undersampling
         len_c_perc_undersampling = len(self.c_perc_undersampling)
@@ -344,3 +339,152 @@ class SmoteRRegression:
         for j in interesting_set_list:
             del j[-1]
         return kNN_result
+
+    def process_balance(self):
+        new_samples_set = self.preprocess_balance()
+        reduced_cols = new_samples_set.columns.values.tolist()[:-1]
+        dups_sample_counts = new_samples_set.pivot_table(index=reduced_cols, aggfunc='size')
+        interesting_set_list = self.interesting_set.iloc[:,:-1].values.tolist()
+
+        #new samples from smote
+        new_samples_smote = []
+        for index, value in dups_sample_counts.items():
+            base_sample = list(index)
+            #print(f'base_sample={base_sample}')
+            kNN_result = self.kNN_calc(self.k, base_sample, interesting_set_list)
+            #Generating new samples
+            for x in range(value):
+                idx = randint(0, 4)
+                #print(f'x={x},idx={idx}')
+                nb = kNN_result[idx]
+                #Generate attribute values
+                new_sample = []
+                for y in range(len(base_sample)-1):
+                    diff = abs(base_sample[y]-nb[y])
+                    new_sample.append(base_sample[y]+random()*diff)
+                #Calc target value
+                a = np.array(new_sample)
+                b = np.array(base_sample[:-1])
+                d1 = np.linalg.norm(a-b)
+                c = np.array(nb[:-1])
+                d2 = np.linalg.norm(a-c)
+                new_target = (d2*base_sample[-1]+d1*nb[-1])/(d1+d2)
+                new_sample.append(new_target)
+                #print(f'new_sample={new_sample}')
+                new_samples_smote.append(new_sample)
+        print(f'len={len(new_samples_smote)}')
+        #print(f'{new_samples_smote}')
+        
+        #Generate final result
+        data = self.getData()
+        data.drop('yPhi',axis=1,inplace=True )
+        df_new_samples_smote = pd.DataFrame(new_samples_smote)
+        df_new_samples_smote.columns = reduced_cols
+        frames = [data, df_new_samples_smote]
+        result = pd.concat(frames)
+        return result        
+
+    def preprocess_balance(self):
+        new_samples_per_bump = round(len(self.uninteresting_set) / len(self.bumps_oversampling))
+        print(f'process_balance(): resample_size per bump={new_samples_per_bump}')
+        resampled_oversampling_set = []
+        for s in self.bumps_oversampling:
+            ratio = new_samples_per_bump / len(s)
+            print(f'ratio={ratio}')
+            if ratio>1.0 and ratio<2.0:
+                size_new_samples_set = round(len(s)*(ratio-1))
+                print(f'size_new_samples_set={size_new_samples_set}')
+                resampled_oversampling_set.append(s.sample(n = size_new_samples_set))
+            elif ratio>2.0:
+                c_perc_frac, c_perc_int = math.modf(ratio)
+                print(f'c_perc_int, c_perc_frac =={c_perc_int, c_perc_frac}')
+                if c_perc_frac > 0.0:
+                    size_frac_new_samples_set = round(len(s)*c_perc_frac)
+                    resampled_oversampling_set.append(s.sample(n=size_frac_new_samples_set))
+                ss = s.loc[s.index.repeat(int(c_perc_int)-1)]
+                resampled_oversampling_set.append(ss)        
+        #combining new samples
+        new_samples_set = pd.concat(resampled_oversampling_set)
+        return new_samples_set        
+
+    def process_extreme(self):
+        new_samples_set = self.preprocess_extreme()
+        reduced_cols = new_samples_set.columns.values.tolist()[:-1]
+        dups_sample_counts = new_samples_set.pivot_table(index=reduced_cols, aggfunc='size')
+        interesting_set_list = self.interesting_set.iloc[:,:-1].values.tolist()
+
+        #new samples from smote
+        new_samples_smote = []
+        for index, value in dups_sample_counts.items():
+            base_sample = list(index)
+            #print(f'base_sample={base_sample}')
+            kNN_result = self.kNN_calc(self.k, base_sample, interesting_set_list)
+            #Generating new samples
+            for x in range(value):
+                idx = randint(0, 4)
+                #print(f'x={x},idx={idx}')
+                nb = kNN_result[idx]
+                #Generate attribute values
+                new_sample = []
+                for y in range(len(base_sample)-1):
+                    diff = abs(base_sample[y]-nb[y])
+                    new_sample.append(base_sample[y]+random()*diff)
+                #Calc target value
+                a = np.array(new_sample)
+                b = np.array(base_sample[:-1])
+                d1 = np.linalg.norm(a-b)
+                c = np.array(nb[:-1])
+                d2 = np.linalg.norm(a-c)
+                new_target = (d2*base_sample[-1]+d1*nb[-1])/(d1+d2)
+                new_sample.append(new_target)
+                #print(f'new_sample={new_sample}')
+                new_samples_smote.append(new_sample)
+        print(f'len={len(new_samples_smote)}')
+        #print(f'{new_samples_smote}')
+        
+        #Generate final result
+        data = self.getData()
+        data.drop('yPhi',axis=1,inplace=True )
+        df_new_samples_smote = pd.DataFrame(new_samples_smote)
+        df_new_samples_smote.columns = reduced_cols
+        frames = [data, df_new_samples_smote]
+        result = pd.concat(frames)
+        return result 
+
+    def preprocess_extreme(self):
+        print(f'process_extreme(): size of bumps_oversampling={len(self.bumps_oversampling)}')
+        print(f'process_extreme(): size of bumps_undersampling={len(self.bumps_undersampling)}')
+        print(f'process_extreme(): size of uninteresting_set={len(self.uninteresting_set)}')
+
+        #calculate average cnt
+        len_uninteresting_set = len(self.uninteresting_set)
+        print(f'process_extreme(): len_uninteresting_set={len_uninteresting_set}')
+        len_total = len(self.data)
+        print(f'process_extreme(): size of total_set={len_total}')
+        average_cnt_uninteresting_set = len_uninteresting_set/len(self.bumps_undersampling)
+        print(f'process_extreme(): average_cnt_uninteresting_set={average_cnt_uninteresting_set}')
+        resample_size = (average_cnt_uninteresting_set**2.0)/(len_total-len_uninteresting_set)
+        print(f'process_extreme(): resample_size={resample_size}')
+        resample_size_per_bump = round(resample_size / len(self.bumps_oversampling))
+        print(f'process_extreme(): resample_size_per_bump={resample_size_per_bump}')
+
+        resampled_oversampling_set = []
+        for s in self.bumps_oversampling:
+            ratio = resample_size_per_bump / len(s)
+            if ratio>1.0 and ratio<2.0:
+                size_new_samples_set = round(len(s)*(ratio-1))
+                print(f'process_extreme(): size_new_samples_set={size_new_samples_set}')
+                resampled_oversampling_set.append(s.sample(n = size_new_samples_set))
+            elif ratio>2.0:
+                c_perc_frac, c_perc_int = math.modf(ratio)
+                print(f'process_extreme(): c_perc_int, c_perc_frac =={c_perc_int, c_perc_frac}')
+                if c_perc_frac > 0.0:
+                    size_frac_new_samples_set = round(len(s)*c_perc_frac)
+                    print(f'process_extreme(): size_frac_new_samples_set={size_frac_new_samples_set}')
+                    resampled_oversampling_set.append(s.sample(n=size_frac_new_samples_set))
+                ss = s.loc[s.index.repeat(int(c_perc_int)-1)]
+                resampled_oversampling_set.append(ss)        
+
+        #combining new samples
+        new_samples_set = pd.concat(resampled_oversampling_set)
+        return new_samples_set        
