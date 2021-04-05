@@ -1,5 +1,4 @@
 *.pyf
 *.pyc
-/test/
 .vscode/
 .ipynb_checkpoints/
