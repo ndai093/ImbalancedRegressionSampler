@@ -1,6 +1,18 @@
 # UtilityBasedRegression
 
-Reference: https://github.com/durgaprasad1997/DynamicRelevanceForRareEvents
+Authors: 
+
+Ning Dai, ndai093@uottawa.ca
+
+Durga Prasad Rangavajjala, drang041@uottawa.ca
+
+Paula Branco, pbranco@uottawa.ca
+
+Reference: 
+
+https://github.com/durgaprasad1997/DynamicRelevanceForRareEvents
+
+https://github.com/paobranco/UBL
 
 1) Install GNU fortran compiler
 
