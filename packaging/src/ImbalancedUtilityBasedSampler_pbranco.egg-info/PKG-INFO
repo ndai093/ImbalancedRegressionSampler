@@ -1,0 +1,16 @@
+Metadata-Version: 2.1
+Name: ImbalancedUtilityBasedSampler-pbranco
+Version: 0.0.1
+Summary: Several utility based sampler for imbalanced learning
+Home-page: https://github.com/ndai093/UtilityBasedRegression
+Author: Paula Branco
+Author-email: pbranco@uottawa.ca
+License: UNKNOWN
+Project-URL: Bug Tracker, https://github.com/pypa/sampleproject/issues
+Description: UNKNOWN
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: POSIX :: Linux
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
